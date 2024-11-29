@@ -1,6 +1,8 @@
 [build]
   command = "echo \"No build needed\""
-  publish = "static"
+  publish = "https://github.com/Marseonrabbit/IPtoolsafeaeon" # Replace with your actual publish directory
 
-[functions]
-  directory = "netlify/functions"
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
