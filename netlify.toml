@@ -1,8 +1,0 @@
-[build]
-  command = "echo \"No build needed\""
-  publish = "https://github.com/Marseonrabbit/IPtoolsafeaeon" # Replace with your actual publish directory
-
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
