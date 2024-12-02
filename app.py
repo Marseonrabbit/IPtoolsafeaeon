@@ -10,8 +10,18 @@ from openpyxl.utils.dataframe import dataframe_to_rows
 from threading import Thread, Event
 import uuid
 
+# Import CSRFProtect from flask_wtf
+from flask_wtf import CSRFProtect
+
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'default_secret_key')  # Use environment variable for security
+app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key_here')  # Set a strong secret key
+
+# Initialize CSRF protection
+csrf = CSRFProtect(app)
+
+# Set upload and download folders
+app.config['UPLOAD_FOLDER'] = 'uploads'
+app.config['DOWNLOAD_FOLDER'] = 'downloads'
 
 # Global dictionary to store job details
 jobs = {}
@@ -96,9 +106,9 @@ def classify_hash_reputation(malicious_count, total_engines):
     """Classify the file hash reputation based on malicious detections."""
     if total_engines == 0:
         return "Unknown"
-    
+
     malicious_percentage = (malicious_count / total_engines) * 100
-    
+
     if malicious_percentage == 0:
         return "Safe"
     elif malicious_percentage <= 20:
@@ -111,12 +121,6 @@ def classify_hash_reputation(malicious_count, total_engines):
 def get_comments(api_key, resource_type, resource_id, limit=5):
     """
     Fetch top community comments from VirusTotal for a given resource.
-
-    :param api_key: Your VirusTotal API key.
-    :param resource_type: Type of the resource ('ip_addresses' or 'files').
-    :param resource_id: The IP address or file hash.
-    :param limit: Number of comments to retrieve.
-    :return: List of comments with user, date, and text.
     """
     url = f"https://www.virustotal.com/api/v3/{resource_type}/{resource_id}/comments"
     headers = {"x-apikey": api_key}
@@ -130,13 +134,12 @@ def get_comments(api_key, resource_type, resource_id, limit=5):
         for comment in comments:
             attributes = comment.get('attributes', {})
             top_comments.append({
-                'user': attributes.get('user', 'Anonymous'),
+                'user': attributes.get('user', {}).get('username', 'Anonymous'),
                 'date': attributes.get('date', ''),
                 'comment': attributes.get('text', '')
             })
         return top_comments
     else:
-        # You can log the error or handle it as needed
         return []
 
 @app.route('/')
@@ -152,7 +155,7 @@ def lookup_ip():
     api_key = request.form['api_key']
 
     if not api_key or not ip:
-        flash('Please enter API Key and IP address.')
+        flash('Please enter API Key and IP address.', 'danger')
         return redirect(url_for('index'))
 
     # Save API Key in session
@@ -160,7 +163,7 @@ def lookup_ip():
 
     isp, country, reputation = get_ip_info(api_key, ip)
     if isp is None:
-        flash('Invalid API Key.')
+        flash('Invalid API Key.', 'danger')
         return redirect(url_for('index'))
 
     # Fetch top 5 community comments for the IP
@@ -171,7 +174,7 @@ def lookup_ip():
         'isp': isp,
         'country': country,
         'reputation': reputation,
-        'comments': comments  # Add comments to the result
+        'comments': comments
     }
 
     return render_template('lookup_result.html', result=result)
@@ -185,25 +188,25 @@ def bulk_upload():
 @app.route('/process_bulk_upload', methods=['POST'])
 def process_bulk_upload():
     """Handle Bulk IP Lookup file upload and start analysis."""
-    file = request.files['file']
-    api_key = request.form['api_key']
+    file = request.files.get('file')
+    api_key = request.form.get('api_key')
 
     if not api_key:
-        flash('Please enter your VirusTotal API Key.')
+        flash('Please enter your VirusTotal API Key.', 'danger')
         return redirect(url_for('bulk_upload'))
 
     # Save API Key in session
     session['api_key'] = api_key
 
-    if file.filename == '':
-        flash('No selected file.')
+    if not file or file.filename == '':
+        flash('No selected file.', 'danger')
         return redirect(url_for('bulk_upload'))
 
     filename = secure_filename(file.filename)
     file_ext = os.path.splitext(filename)[1].lower()
 
     if file_ext not in ['.csv', '.xls', '.xlsx']:
-        flash('Unsupported file format. Please upload a CSV or Excel file.')
+        flash('Unsupported file format. Please upload a CSV or Excel file.', 'danger')
         return redirect(url_for('bulk_upload'))
 
     # Save the uploaded file to disk
@@ -211,9 +214,6 @@ def process_bulk_upload():
     os.makedirs(upload_folder, exist_ok=True)
     file_path = os.path.join(upload_folder, filename)
     file.save(file_path)
-
-    # Flash success message
-    flash('File successfully uploaded.')
 
     # Generate a unique job ID
     job_id = str(uuid.uuid4())
@@ -245,7 +245,7 @@ def process_file_thread(job_id, file_path, api_key):
             ip_df = pd.read_excel(file_path)
 
         # Check for acceptable column names (case-insensitive)
-        acceptable_columns = ['IP', 'ip_address', 'IPAddress']
+        acceptable_columns = ['ip', 'ip_address', 'ipaddress', 'source_ip']
         columns_lower = [col.lower() for col in ip_df.columns]
         ip_column = None
         for col in acceptable_columns:
@@ -336,7 +336,7 @@ def process_file_thread(job_id, file_path, api_key):
 def bulk_progress(job_id):
     """Display the progress of the bulk IP analysis."""
     if job_id not in jobs:
-        flash('Invalid job ID.')
+        flash('Invalid job ID.', 'danger')
         return redirect(url_for('bulk_upload'))
 
     return render_template('bulk_progress.html', job_id=job_id)
@@ -359,7 +359,7 @@ def download_result(job_id):
     if job_id in jobs and jobs[job_id]['status'] == 'Completed':
         return send_file(jobs[job_id]['result_file'], as_attachment=True)
     else:
-        flash('Result file not available.')
+        flash('Result file not available.', 'danger')
         return redirect(url_for('bulk_upload'))
 
 @app.route('/cancel/<job_id>', methods=['POST'])
@@ -367,9 +367,9 @@ def cancel_job(job_id):
     """Cancel an ongoing IP analysis job."""
     if job_id in jobs and jobs[job_id]['status'] == 'Processing':
         jobs[job_id]['cancel_event'].set()
-        flash('IP analysis has been canceled.')
+        flash('IP analysis has been canceled.', 'warning')
     else:
-        flash('Cannot cancel this job.')
+        flash('Cannot cancel this job.', 'danger')
     return redirect(url_for('bulk_progress', job_id=job_id))
 
 @app.route('/hash_lookup')
@@ -385,7 +385,7 @@ def lookup_hash():
     api_key = request.form['api_key']
 
     if not api_key or not file_hash:
-        flash('Please enter API Key and File Hash.')
+        flash('Please enter API Key and File Hash.', 'danger')
         return redirect(url_for('hash_lookup'))
 
     # Save API Key in session
@@ -394,21 +394,21 @@ def lookup_hash():
     result = get_hash_reputation(api_key, file_hash)
     status = result[0]
     if status == "Unknown":
-        flash('Unable to retrieve hash reputation.')
+        flash('Unable to retrieve hash reputation.', 'danger')
         return redirect(url_for('hash_lookup'))
     elif status == "Not Found":
-        flash('File hash not found in VirusTotal database.')
+        flash('File hash not found in VirusTotal database.', 'warning')
         return redirect(url_for('hash_lookup'))
     elif status == "Invalid API Key":
-        flash('Invalid API Key.')
+        flash('Invalid API Key.', 'danger')
         return redirect(url_for('hash_lookup'))
     elif status == "Error":
-        flash('An error occurred while retrieving data.')
+        flash('An error occurred while retrieving data.', 'danger')
         return redirect(url_for('hash_lookup'))
 
     reputation, malicious_count, total_engines, community_score, file_signer, file_type, file_size, file_names = result
 
-    if community_score == 0:
+    if community_score <= 0:
         community_reputation = "Safe"
     elif community_score == 1:
         community_reputation = "Suspicious"
@@ -428,7 +428,7 @@ def lookup_hash():
         'file_size': file_size,
         'file_signer': file_signer,
         'file_names': file_names,
-        'comments': comments  # Add comments to the result
+        'comments': comments
     }
 
     return render_template('hash_result.html', result=result_data)
@@ -444,14 +444,15 @@ def save_api_key_route():
     """Save the API Key to the session."""
     api_key = request.form['api_key']
     if not api_key:
-        flash('Please enter an API Key before saving.')
+        flash('Please enter an API Key before saving.', 'danger')
         return redirect(url_for('api_key_page'))
 
     # Save API Key in session
     session['api_key'] = api_key
-    flash('API Key saved successfully.')
+    flash('API Key saved successfully.', 'success')
     return redirect(url_for('api_key_page'))
 
+# Run the Flask app
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     host = '0.0.0.0'
