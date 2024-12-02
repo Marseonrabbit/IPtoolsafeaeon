@@ -4,8 +4,11 @@
 {% block content %}
 <h2>API Key Management</h2>
 <form method="post" action="{{ url_for('save_api_key_route') }}">
-    <label for="api_key">VirusTotal API Key:</label><br>
-    <input type="text" name="api_key" id="api_key" value="{{ session.get('api_key', '') }}"><br><br>
-    <input type="submit" value="Save API Key">
+    {{ csrf_token() }}
+    <div class="form-group">
+        <label for="api_key">VirusTotal API Key:</label>
+        <input type="password" class="form-control" name="api_key" id="api_key" value="{{ api_key }}" placeholder="Enter your VirusTotal API Key" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Save API Key</button>
 </form>
 {% endblock %}
