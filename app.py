@@ -1,3 +1,4 @@
+# app.py
 import os
 from flask import Flask, render_template, request, redirect, url_for, flash, send_file, session, jsonify
 import pandas as pd
@@ -450,13 +451,6 @@ def save_api_key_route():
     session['api_key'] = api_key
     flash('API Key saved successfully.')
     return redirect(url_for('api_key_page'))
-
-# Remove the duplicated code below
-# It appears you attempted to append another `app.py` block, which causes duplication and potential conflicts.
-# Ensure that your `app.py` contains only one set of route definitions and configurations.
-
-# if __name__ == '__main__':
-#     app.run(debug=True)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
