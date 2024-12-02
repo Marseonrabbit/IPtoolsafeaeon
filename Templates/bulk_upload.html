@@ -4,10 +4,16 @@
 {% block content %}
 <h2>Bulk IP Lookup</h2>
 <form method="post" action="{{ url_for('process_bulk_upload') }}" enctype="multipart/form-data">
-    <label for="api_key">VirusTotal API Key:</label><br>
-    <input type="text" name="api_key" id="api_key" value="{{ session.get('api_key', '') }}"><br><br>
-    <label for="file">Select CSV/Excel File:</label><br>
-    <input type="file" name="file" id="file" accept=".csv,.xls,.xlsx"><br><br>
-    <input type="submit" value="Upload and Process">
+    {{ csrf_token() }}
+    <div class="form-group">
+        <label for="api_key">VirusTotal API Key:</label>
+        <input type="password" class="form-control" name="api_key" id="api_key" value="{{ session.get('api_key', '') }}" placeholder="Enter your VirusTotal API Key" required>
+    </div>
+    <div class="form-group">
+        <label for="file">Select CSV/Excel File:</label>
+        <input type="file" class="form-control-file" name="file" id="file" accept=".csv,.xls,.xlsx" required>
+        <small class="form-text text-muted">Supported file types: .csv, .xls, .xlsx</small>
+    </div>
+    <button type="submit" class="btn btn-primary">Upload and Process</button>
 </form>
 {% endblock %}
