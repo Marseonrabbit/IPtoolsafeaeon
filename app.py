@@ -1,5 +1,5 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, send_file, session, jsonify
 import os
+from flask import Flask, render_template, request, redirect, url_for, flash, send_file, session, jsonify
 import pandas as pd
 import requests
 from werkzeug.utils import secure_filename
@@ -10,7 +10,7 @@ from threading import Thread, Event
 import uuid
 
 app = Flask(__name__)
-app.secret_key = 'your_secret_key'  # Replace with a secure key
+app.secret_key = os.environ.get('SECRET_KEY', 'default_secret_key')  # Use environment variable for security
 
 # Global dictionary to store job details
 jobs = {}
@@ -451,5 +451,15 @@ def save_api_key_route():
     flash('API Key saved successfully.')
     return redirect(url_for('api_key_page'))
 
+# Remove the duplicated code below
+# It appears you attempted to append another `app.py` block, which causes duplication and potential conflicts.
+# Ensure that your `app.py` contains only one set of route definitions and configurations.
+
+# if __name__ == '__main__':
+#     app.run(debug=True)
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    host = '0.0.0.0'
+    debug_mode = os.environ.get('FLASK_DEBUG', 'False') == 'True'
+    app.run(host=host, port=port, debug=debug_mode)
