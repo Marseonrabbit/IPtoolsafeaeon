@@ -4,15 +4,10 @@
 {% block content %}
 <h2>Single IP Lookup</h2>
 <form method="post" action="{{ url_for('lookup_ip') }}">
-    {{ csrf_token() }}
-    <div class="form-group">
-        <label for="api_key">VirusTotal API Key:</label>
-        <input type="password" class="form-control" name="api_key" id="api_key" value="{{ session.get('api_key', '') }}" placeholder="Enter your VirusTotal API Key">
-    </div>
-    <div class="form-group">
-        <label for="ip">IP Address:</label>
-        <input type="text" class="form-control" name="ip" id="ip" placeholder="Enter IP address">
-    </div>
-    <button type="submit" class="btn btn-primary">Lookup</button>
+    <label for="api_key">VirusTotal API Key:</label><br>
+    <input type="text" name="api_key" id="api_key" value="{{ session.get('api_key', '') }}"><br><br>
+    <label for="ip">IP Address:</label><br>
+    <input type="text" name="ip" id="ip"><br><br>
+    <input type="submit" value="Lookup">
 </form>
 {% endblock %}
